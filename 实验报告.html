@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>乳腺癌良恶性分类 —— SVM 与 BP 神经网络对比</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f5f7fa; color: #2c3e50; line-height: 1.6; }
+  h1 { color: #2c3e50; border-bottom: 4px solid #1f77b4; padding-bottom: 10px; text-align: center; }
+  h2 { color: #1f77b4; border-left: 5px solid #1f77b4; padding-left: 12px; margin-top: 35px; background: linear-gradient(to right, #e8f4ff, transparent); padding-top: 6px; padding-bottom: 6px; }
+  h3 { color: #ff7f0e; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+  th, td { padding: 10px 12px; text-align: center; border: 1px solid #ddd; }
+  th { background: #1f77b4; color: white; }
+  tr:nth-child(even) td { background: #f0f7ff; }
+  .metric { font-weight: bold; color: #ff7f0e; }
+  ul { padding-left: 25px; }
+  li { margin-bottom: 6px; }
+  code { background: #e8f4f8; padding: 2px 6px; border-radius: 3px; font-family: Consolas, monospace; font-size: 90%; color: #c7254e; }
+</style>
+</head>
+<body>
+
+<h1>🏥 乳腺癌良恶性诊断分类<br><small>SVM 与 BP 神经网络对比实验</small></h1>
+
+<div class="card">
+<h2>📋 实验概览</h2>
+<ul>
+<li><b>数据集</b>：Breast Cancer Wisconsin (Diagnostic) —— 共 569 例样本（良性 357，恶性 212）</li>
+<li><b>特征数</b>：30 个数值特征（细胞核的半径、纹理、周长、面积、光滑度、紧密度、凹度等）</li>
+<li><b>问题背景</b>：医学辅助诊断。通过对细针抽吸活检（FNA）图像的数字化特征进行机器学习，辅助医生判断肿块是良性还是恶性。</li>
+<li><b>实验目的</b>：比较 SVM（支持向量机）与 BP 神经网络在同一分类任务上的性能差异，并分析原因。</li>
+<li><b>软件环境</b>：PyCharm + Python 3.13 + scikit-learn 1.8 + matplotlib + seaborn</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>⚖️ 模型性能对比</h2>
+<p>在相同的训练集/测试集划分下，两种模型的量化指标对比：</p>
+<table>
+<thead>
+<tr><th>模型</th><th>准确率</th><th>精确率</th><th>召回率</th><th>F1</th><th>AUC</th><th>训练耗时(s)</th><th>预测耗时(ms)</th></tr>
+</thead>
+<tbody>
+<tr><td><b>SVM</b></td><td>0.9580</td><td>0.9468</td><td>0.9889</td><td>0.9674</td><td>0.9969</td><td>4.956</td><td>0.960</td></tr>
+<tr><td><b>BP 神经网络</b></td><td><span class="metric">0.9720</span></td><td><span class="metric">0.9778</span></td><td>0.9778</td><td><span class="metric">0.9778</span></td><td>0.9969</td><td>4.108</td><td>0.290</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>🔍 结果分析与讨论</h2>
+<h3>1. 准确率 / F1 / AUC 总体表现</h3>
+<p>两个模型在该数据集上均表现优秀，<b>AUC 都达到了 0.9969</b>，说明模型的整体排序能力极强。BP 神经网络在准确率和 F1 上略微领先（0.9720 vs 0.9580），但两者差距很小（约 1.4 个百分点）。这说明对于这一"线性可分性较好"的数据集，<b>线性 SVM（kernel=linear）已经能胜任，而神经网络通过增加非线性进一步提升了少量边界样本的识别精度</b>。</p>
+
+<h3>2. 精确率 vs 召回率的权衡</h3>
+<p>SVM 的召回率（0.9889）非常高（把良性样本几乎全找对），但精确率偏低（0.9468）——意味着它把一些恶性样本误判为良性（5 例假阴性）。<b>在医学诊断场景中，假阴性（漏诊恶性）是更危险的错误。</b></p>
+<p>BP 神经网络的精确率与召回率都达到 0.9778，<b>两个类别的表现更均衡</b>。假阳性 2 例，假阴性 2 例，<b>总体误差更少</b>（4 vs 6）。</p>
+
+<h3>3. 计算效率对比</h3>
+<p>在训练阶段（含网格搜索），两者耗时接近（5s vs 4.1s）。但在预测阶段，<b>BP 神经网络的预测速度是 SVM 的 3 倍以上</b>（0.29ms vs 0.96ms）。原因：SVM 需要计算测试样本与所有支持向量的距离，而 MLP 只需一次前向传播。对于大数据集或实时预测，这一差异会被放大。</p>
+
+<h3>4. 最佳超参数的启示</h3>
+<ul>
+<li><b>SVM</b> 选择了 <code>kernel=linear, C=0.01</code>：小的 C 值意味着更强的正则化，表明数据集本身噪声不大，不需要复杂核函数。</li>
+<li><b>BP-NN</b> 选择了 <code>(64, 32) 双层 + tanh 激活 + alpha=0.0001 + lr=0.01</code>：两层网络已经足够，更深的网络并没有带来明显收益，体现了"小数据用浅模型"的经验法则。</li>
+</ul>
+
+<h3>5. 结论</h3>
+<p>在乳腺癌良恶性分类这一任务上，<b>SVM 和 BP 神经网络都是非常优秀的方案</b>，二者的 AUC（0.9969）完全持平，BP 神经网络的综合指标略优。</p>
+<ul>
+<li><span class="metric">推荐 BP 神经网络</span>：若追求准确率和预测速度，且数据特征之间存在非线性关系时，优先选择。</li>
+<li><b>推荐 SVM</b>：当样本量较小、需要强的可解释性（线性核的权重可直接解释特征重要性）、或需要更少的超参数调优时，SVM 更稳定和简单。</li>
+</ul>
+<p><b>实际医学应用中，不应只看准确率，还应结合领域知识与医生需求，对模型的决策阈值做进一步的调整（例如降低判为良性的阈值来减少漏诊）。</b></p>
+</div>
+
+<div class="card">
+<h2>📁 项目文件结构</h2>
+<pre>
+数据挖掘/
+├── data_exploration.py     # 数据探索与预处理
+├── svm_model.py            # SVM 模型训练与评估
+├── bp_nn_model.py          # BP 神经网络训练与评估
+├── compare_models.py       # 模型对比与综合图表
+├── 实验报告.html           # 本文件
+└── outputs/                # 运行时生成的图表与 JSON 结果
+</pre>
+</div>
+
+</body>
+</html>
